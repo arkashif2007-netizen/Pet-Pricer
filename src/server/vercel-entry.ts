@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getService, triggerBackgroundSyncIfNeeded, syncStateInstance } from '../src/server/service-singleton.ts';
-import { handle } from '../src/server/http.ts';
+import { getService, triggerBackgroundSyncIfNeeded, syncStateInstance } from './service-singleton.ts';
+import { handle } from './http.ts';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const log = (msg: string) => console.log(`[vercel] ${msg}`);
@@ -14,7 +14,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       '/';
 
     let path = rawPath;
-    if (path === '/api' || path === '/api/' || path === '/api/index.ts' || path === '/api/index') {
+    if (path === '/api' || path === '/api/' || path === '/api/index.ts' || path === '/api/index' || path === '/api/index.js') {
       path = '/';
     } else if (path.startsWith('/api?') || path.startsWith('/api/?')) {
       path = '/' + path.substring(path.indexOf('?'));

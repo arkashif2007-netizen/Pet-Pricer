@@ -8,7 +8,7 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && esbuild src/server/vercel-entry.ts --bundle --platform=node --target=node20 --format=esm --outfile=api/index.js --external:node:sqlite",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/unit/*.test.ts\" \"test/integration/*.test.ts\"",
     "test:unit": "node --test \"test/unit/*.test.ts\"",
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
   }
 }
