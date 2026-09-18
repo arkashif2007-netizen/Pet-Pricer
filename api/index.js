@@ -1834,181 +1834,10 @@ var ScannerService = class {
    * weekly sales velocity, and popularity ranks.
    */
   async syncPopularPets(options = {}) {
-    const pages = options.pages ?? 2;
-    const shouldVerify = options.verifyDepth ?? true;
-    const now = Date.now();
-    const allPopularItems = [];
-    for (let page = 1; page <= pages; page++) {
-      try {
-        const res = await this.interactiveApi.listItems({
-          filter: { types: [{ type: "pet" }] },
-          sort: { popularity: "desc" },
-          page,
-          amount: 72
-        });
-        for (const item of res.items ?? []) {
-          if (isUsablePrice(item.price)) {
-            allPopularItems.push(item);
-          }
-        }
-      } catch {
-        break;
-      }
-    }
-    if (allPopularItems.length === 0) {
-      return { petsSynced: 0, itemsStored: 0, topPets: [] };
-    }
-    this.store.writeItems(allPopularItems, now);
-    const uniquePets = /* @__PURE__ */ new Map();
-    const trendRows = [];
-    const topPets = [];
-    for (const item of allPopularItems) {
-      const slug = item.realName || item.name;
-      if (!uniquePets.has(slug)) {
-        uniquePets.set(slug, item);
-        const rank = uniquePets.size;
-        trendRows.push({ petSlug: slug, rank, observedAt: now });
-        topPets.push(item.name);
-      }
-    }
-    this.store.writeTrend(trendRows);
-    this.trendCache = new Map(trendRows.map((r) => [r.petSlug, r.rank]));
-    this.trendAt = now;
-    const itemsToAdd = [];
-    const liquidityToWrite = [];
-    const candidatePets = [...uniquePets.values()].slice(0, 100);
-    const batchSize = 4;
-    for (let i = 0; i < candidatePets.length; i += batchSize) {
-      const chunk = candidatePets.slice(i, i + batchSize);
-      await Promise.all(
-        chunk.map(async (pet) => {
-          try {
-            const props = await this.interactiveApi.productProperties(pet.id);
-            const normalBaseId = props["default:false:false"] ?? pet.id;
-            const normalAges = await this.interactiveApi.productAges(normalBaseId).catch(() => []);
-            const normalPids = normalAges.length > 0 ? normalAges.map((a) => a.id) : [normalBaseId];
-            if (!normalPids.includes(normalBaseId)) normalPids.push(normalBaseId);
-            const neonBaseKeys = Object.keys(props).filter((k) => k.startsWith("neon:"));
-            const neonPids = [];
-            for (const nk of neonBaseKeys) {
-              const nid = props[nk];
-              if (typeof nid === "number") {
-                const neonAges = await this.interactiveApi.productAges(nid).catch(() => []);
-                if (neonAges.length > 0) {
-                  for (const na of neonAges) neonPids.push(na.id);
-                } else {
-                  neonPids.push(nid);
-                }
-              }
-            }
-            const uniqueNeonPids = [...new Set(neonPids)];
-            const normalInfo = await this.interactiveApi.productInfo(normalBaseId).catch(() => null);
-            if (normalInfo) {
-              const sales = normalInfo.numberOfSalesPerWeek;
-              if (typeof sales === "number" && sales >= 0) {
-                liquidityToWrite.push({ productId: normalBaseId, salesPerWeek: Math.round(sales), observedAt: now });
-              }
-            }
-            const normalBooks = await this.interactiveApi.productOffers(normalPids, { amount: 72 }).catch(() => []);
-            const normalOffers = normalBooks.flatMap((b) => b.offers).filter((o) => isUsablePrice(o.price));
-            const normalDepth = depthCheck(normalOffers, 4);
-            const baseNeonId = props["neon:false:false"];
-            let baseNeonPids = [];
-            if (typeof baseNeonId === "number") {
-              const baseNeonAges = await this.interactiveApi.productAges(baseNeonId).catch(() => []);
-              baseNeonPids = baseNeonAges.length > 0 ? baseNeonAges.map((a) => a.id) : [baseNeonId];
-              if (!baseNeonPids.includes(baseNeonId)) baseNeonPids.push(baseNeonId);
-            }
-            const baseNeonBooks = baseNeonPids.length > 0 ? await this.interactiveApi.productOffers(baseNeonPids, { amount: 72 }).catch(() => []) : [];
-            const baseNeonOffers = baseNeonBooks.flatMap((b) => b.offers).filter((o) => isUsablePrice(o.price));
-            const baseNeonPrices = baseNeonOffers.map((o) => o.price).sort((a, b) => a - b);
-            const baseNeonPrice = baseNeonPrices.length > 0 ? baseNeonPrices[0] : null;
-            const neonBooks = uniqueNeonPids.length > 0 ? await this.interactiveApi.productOffers(uniqueNeonPids, { amount: 72 }).catch(() => []) : [];
-            const neonOffers = neonBooks.flatMap((b) => b.offers).filter((o) => isUsablePrice(o.price));
-            const neonPrices = neonOffers.map((o) => o.price).sort((a, b) => a - b);
-            const neonPrice = baseNeonPrice ?? (neonPrices.length > 0 ? neonPrices[0] : null);
-            const neonProductId = baseNeonId ?? uniqueNeonPids[0];
-            const buy4Price = normalDepth.cheapest4xListingPrice ?? normalDepth.cheapestListingPrice;
-            const cheapestSingle = normalDepth.cheapestListingPrice;
-            const craftCost = normalDepth.costForUnits ?? (buy4Price ? buy4Price * 4 : null);
-            if (buy4Price !== null) {
-              this.store.writeDepth({
-                productId: normalBaseId,
-                available: normalDepth.available,
-                costForUnits: craftCost,
-                units: 4,
-                bookMin: cheapestSingle,
-                cheapest4xPrice: buy4Price,
-                listingCount4x: normalDepth.listingCountAtCheapest4x,
-                observedAt: now
-              });
-              itemsToAdd.push({
-                id: normalBaseId,
-                goodId: normalInfo?.goodId ?? String(normalBaseId),
-                name: normalInfo?.name ?? pet.name,
-                type: "pet",
-                realName: normalInfo?.realName ?? pet.realName,
-                imageId: null,
-                imageUri: normalInfo?.imageUri || pet.imageUri,
-                subtype: null,
-                age: "newborn",
-                rare: normalInfo?.rare || pet.rare,
-                pumping: "default",
-                flyable: false,
-                rideable: false,
-                price: buy4Price,
-                avgPrice: cheapestSingle,
-                bonuses: 0,
-                source: "observed"
-              });
-            }
-            if (neonProductId && neonPrice !== null) {
-              this.store.writeDepth({
-                productId: neonProductId,
-                available: neonPrices.length,
-                costForUnits: neonPrice,
-                units: 1,
-                bookMin: neonPrice,
-                cheapest4xPrice: neonPrice,
-                listingCount4x: 1,
-                observedAt: now
-              });
-              itemsToAdd.push({
-                id: neonProductId,
-                goodId: String(neonProductId),
-                name: normalInfo?.name ?? pet.name,
-                type: "pet",
-                realName: normalInfo?.realName ?? pet.realName,
-                imageId: null,
-                imageUri: normalInfo?.imageUri || pet.imageUri,
-                subtype: null,
-                age: "reborn",
-                rare: normalInfo?.rare || pet.rare,
-                pumping: "neon",
-                flyable: false,
-                rideable: false,
-                price: neonPrice,
-                avgPrice: neonPrice,
-                bonuses: 0,
-                source: "observed"
-              });
-            }
-          } catch {
-          }
-        })
-      );
-    }
-    if (itemsToAdd.length > 0) {
-      this.store.writeItems(itemsToAdd, now);
-    }
-    if (liquidityToWrite.length > 0) {
-      this.store.writeLiquidity(liquidityToWrite);
-    }
-    this.cache = null;
     return {
-      petsSynced: uniquePets.size,
-      itemsStored: allPopularItems.length + itemsToAdd.length,
-      topPets: topPets.slice(0, 10)
+      petsSynced: 0,
+      itemsStored: 0,
+      topPets: []
     };
   }
   /**
@@ -2444,8 +2273,6 @@ function discount(opportunity) {
 
 // src/server/service-singleton.ts
 var serviceInstance = null;
-var syncInProgress = false;
-var lastSync = 0;
 var syncStateInstance = {
   lastSyncedAt: Date.now(),
   nextSyncAt: Date.now() + 5 * 6e4,
@@ -2490,20 +2317,6 @@ function getService() {
   return serviceInstance;
 }
 function triggerBackgroundSyncIfNeeded(service, log = console.log) {
-  const now = Date.now();
-  if (!syncInProgress && (now - lastSync > 10 * 6e4 || service.isStale())) {
-    syncInProgress = true;
-    lastSync = now;
-    service.syncPopularPets({ pages: 1, verifyDepth: false }).then(() => {
-      syncStateInstance.lastSyncedAt = Date.now();
-      syncStateInstance.nextSyncAt = Date.now() + 5 * 6e4;
-      log("[auto-sync] Completed non-blocking background refresh");
-    }).catch((err) => {
-      log(`[auto-sync] warning: ${err instanceof Error ? err.message : String(err)}`);
-    }).finally(() => {
-      syncInProgress = false;
-    });
-  }
 }
 
 // src/server/http.ts
@@ -3824,12 +3637,9 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
 
     <div class="header-actions">
       <div class="live-pill">
-        <span class="pulse-dot"></span>
-        <span>Auto-Sync in <strong id="countdownTimer">04:59</strong></span>
+        <span class="pulse-dot" style="background:#10b981;"></span>
+        <span>Snapshot Mode (Zero Polling)</span>
       </div>
-      <button class="btn btn-primary" id="syncPopularBtn" type="button">
-        \u26A1 Sync Live
-      </button>
       <button class="btn" id="themeToggleBtn" type="button">
         \u{1F313} Theme
       </button>
@@ -4236,35 +4046,6 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     }
   }
 
-  // Live 5-Minute Countdown Timer & Server Poller
-  function syncWithServerTimer() {
-    fetch(API_ORIGIN + '/api/sync-status')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (typeof data.secondsRemaining === 'number') {
-          state.secondsRemaining = data.secondsRemaining;
-        }
-      })
-      .catch(function() {});
-  }
-
-  function startCountdown() {
-    setInterval(function() {
-      if (state.secondsRemaining > 0) {
-        state.secondsRemaining--;
-      } else {
-        state.secondsRemaining = 300;
-        fetchData(true);
-        syncWithServerTimer();
-      }
-      var m = Math.floor(state.secondsRemaining / 60);
-      var s = state.secondsRemaining % 60;
-      var str = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-      el('countdownTimer').textContent = str;
-    }, 1000);
-  }
-  startCountdown();
-  syncWithServerTimer();
 
   function fetchData(silent) {
     var rarities = state.rarity === 'all' ? 'rare,ultra_rare,legendary' : state.rarity;
@@ -4974,26 +4755,12 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     applyTheme(state.theme === 'dark' ? 'light' : 'dark');
   });
 
-  el('syncPopularBtn').addEventListener('click', function() {
-    var btn = el('syncPopularBtn');
-    btn.disabled = true;
-    btn.textContent = '\u23F3 Syncing...';
-    fetch(API_ORIGIN + '/api/sync-popular', { method: 'POST' })
-      .then(function(r) { return r.json(); })
-      .then(function() {
-        btn.textContent = '\u2713 Synced!';
-        state.secondsRemaining = 300;
-        setTimeout(function() {
-          btn.disabled = false;
-          btn.textContent = '\u26A1 Sync Live';
-        }, 1500);
-        fetchData(false);
-      })
-      .catch(function() {
-        btn.disabled = false;
-        btn.textContent = '\u26A1 Sync Live';
-      });
-  });
+  var syncBtn = el('syncPopularBtn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function() {
+      fetchData(false);
+    });
+  }
 
   el('searchInput').addEventListener('input', function(e) {
     state.query = e.target.value;

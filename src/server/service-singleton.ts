@@ -57,22 +57,5 @@ export function getService(): ScannerService {
 }
 
 export function triggerBackgroundSyncIfNeeded(service: ScannerService, log: (msg: string) => void = console.log): void {
-  const now = Date.now();
-  if (!syncInProgress && (now - lastSync > 10 * 60_000 || service.isStale())) {
-    syncInProgress = true;
-    lastSync = now;
-    service
-      .syncPopularPets({ pages: 1, verifyDepth: false })
-      .then(() => {
-        syncStateInstance.lastSyncedAt = Date.now();
-        syncStateInstance.nextSyncAt = Date.now() + 5 * 60_000;
-        log('[auto-sync] Completed non-blocking background refresh');
-      })
-      .catch((err) => {
-        log(`[auto-sync] warning: ${err instanceof Error ? err.message : String(err)}`);
-      })
-      .finally(() => {
-        syncInProgress = false;
-      });
-  }
+  // Permanently disabled: zero outgoing requests to StarPets API
 }

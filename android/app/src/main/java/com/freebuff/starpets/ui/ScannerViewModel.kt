@@ -80,12 +80,6 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         refresh()
-        pollJob = viewModelScope.launch {
-            while (true) {
-                delay(REFRESH_INTERVAL_MS)
-                refresh(showSpinner = false)
-            }
-        }
     }
 
     /** Reload the snapshot from the backend. */

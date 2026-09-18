@@ -1287,12 +1287,9 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
 
     <div class="header-actions">
       <div class="live-pill">
-        <span class="pulse-dot"></span>
-        <span>Auto-Sync in <strong id="countdownTimer">04:59</strong></span>
+        <span class="pulse-dot" style="background:#10b981;"></span>
+        <span>Snapshot Mode (Zero Polling)</span>
       </div>
-      <button class="btn btn-primary" id="syncPopularBtn" type="button">
-        ⚡ Sync Live
-      </button>
       <button class="btn" id="themeToggleBtn" type="button">
         🌓 Theme
       </button>
@@ -1699,35 +1696,6 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     }
   }
 
-  // Live 5-Minute Countdown Timer & Server Poller
-  function syncWithServerTimer() {
-    fetch(API_ORIGIN + '/api/sync-status')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (typeof data.secondsRemaining === 'number') {
-          state.secondsRemaining = data.secondsRemaining;
-        }
-      })
-      .catch(function() {});
-  }
-
-  function startCountdown() {
-    setInterval(function() {
-      if (state.secondsRemaining > 0) {
-        state.secondsRemaining--;
-      } else {
-        state.secondsRemaining = 300;
-        fetchData(true);
-        syncWithServerTimer();
-      }
-      var m = Math.floor(state.secondsRemaining / 60);
-      var s = state.secondsRemaining % 60;
-      var str = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
-      el('countdownTimer').textContent = str;
-    }, 1000);
-  }
-  startCountdown();
-  syncWithServerTimer();
 
   function fetchData(silent) {
     var rarities = state.rarity === 'all' ? 'rare,ultra_rare,legendary' : state.rarity;
@@ -2437,26 +2405,12 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     applyTheme(state.theme === 'dark' ? 'light' : 'dark');
   });
 
-  el('syncPopularBtn').addEventListener('click', function() {
-    var btn = el('syncPopularBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Syncing...';
-    fetch(API_ORIGIN + '/api/sync-popular', { method: 'POST' })
-      .then(function(r) { return r.json(); })
-      .then(function() {
-        btn.textContent = '✓ Synced!';
-        state.secondsRemaining = 300;
-        setTimeout(function() {
-          btn.disabled = false;
-          btn.textContent = '⚡ Sync Live';
-        }, 1500);
-        fetchData(false);
-      })
-      .catch(function() {
-        btn.disabled = false;
-        btn.textContent = '⚡ Sync Live';
-      });
-  });
+  var syncBtn = el('syncPopularBtn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function() {
+      fetchData(false);
+    });
+  }
 
   el('searchInput').addEventListener('input', function(e) {
     state.query = e.target.value;
