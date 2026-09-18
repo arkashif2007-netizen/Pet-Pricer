@@ -79,7 +79,7 @@ export function createHttpServer(service: ScannerService, options: HttpServerOpt
   return server;
 }
 
-async function handle(
+export async function handle(
   service: ScannerService,
   req: IncomingMessage,
   res: ServerResponse,
@@ -320,7 +320,7 @@ async function handle(
       }
       syncState.isSyncing = true;
       try {
-        const body = await readJsonBody(req).catch(() => ({}));
+        const body = (await readJsonBody(req).catch(() => ({}))) as Record<string, unknown>;
         const pages = Number(body?.pages ?? 2);
         const resData = await service.syncPopularPets({ pages, verifyDepth: true });
         syncState.lastSyncedAt = Date.now();
