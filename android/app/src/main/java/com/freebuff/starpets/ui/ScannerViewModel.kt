@@ -9,6 +9,15 @@ import com.freebuff.starpets.data.OrderBook
 import com.freebuff.starpets.data.PetDetail
 import com.freebuff.starpets.data.ScannerApi
 import com.freebuff.starpets.data.Status
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import com.freebuff.starpets.MainActivity
+import com.freebuff.starpets.R
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +33,7 @@ import kotlinx.coroutines.launch
  */
 private const val REFRESH_INTERVAL_MS = 4 * 60 * 1000L
 
-const val DEFAULT_BASE_URL = "http://192.168.18.3:8787"
+const val DEFAULT_BASE_URL = "https://pet-pricer.vercel.app"
 
 data class ScannerUiState(
     val loading: Boolean = false,
@@ -47,9 +56,19 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     private val prefs = application.getSharedPreferences("scanner", Context.MODE_PRIVATE)
 
+    private fun resolveInitialUrl(): String {
+        val saved = prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL
+        return if (saved.contains("192.168") || saved.contains("10.0.2.2") || saved.contains(":8787")) {
+            prefs.edit().putString(KEY_BASE_URL, DEFAULT_BASE_URL).apply()
+            DEFAULT_BASE_URL
+        } else {
+            saved
+        }
+    }
+
     private val _state = MutableStateFlow(
         ScannerUiState(
-            baseUrl = prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL) ?: DEFAULT_BASE_URL,
+            baseUrl = resolveInitialUrl(),
             feePctPercent = prefs.getFloat(KEY_FEE, 25f).toDouble(),
             maxNormalPrice = prefs.getFloat(KEY_MAX_NORMAL, 3f).toDouble(),
             sortBy = prefs.getString(KEY_SORT, "ratio") ?: "ratio",
@@ -91,6 +110,10 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
                         error = null,
                         lastRefreshedAt = System.currentTimeMillis(),
                     )
+                }
+                val topCraft = opportunities.firstOrNull { it.verdict == "craft" && (it.margin ?: 0.0) > 0.0 }
+                if (topCraft != null) {
+                    sendNotification(topCraft)
                 }
             } catch (e: Exception) {
                 _state.update {
@@ -175,6 +198,47 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
     override fun onCleared() {
         pollJob?.cancel()
         super.onCleared()
+    }
+
+    private fun sendNotification(opp: Opportunity) {
+        try {
+            val context = getApplication<Application>().applicationContext
+            val channelId = "pet_pricer_alerts"
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Pet Pricer Margin Alerts",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Alerts when profitable pet crafts are found on StarPets"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            val profitText = String.format(Locale.US, "$%.2f", opp.margin ?: 0.0)
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("💎 Profitable Craft: ${opp.petName}")
+                .setContentText("Net profit: $profitText per craft | Return: ${String.format(Locale.US, "%.1f", opp.ratio ?: 0.0)}x")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+
+            notificationManager.notify(opp.petSlug.hashCode(), notification)
+        } catch (_: Exception) {
+            // Notifications are best-effort
+        }
     }
 
     private companion object {

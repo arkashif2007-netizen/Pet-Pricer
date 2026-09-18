@@ -1344,6 +1344,9 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
       <button class="btn" id="themeToggleBtn" type="button">
         🌓 Theme
       </button>
+      <a class="btn btn-success" href="/PetPricer.apk" download style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+        📲 Download APK
+      </a>
     </div>
   </div>
 </header>
@@ -1422,6 +1425,18 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
         <button class="btn btn-sm btn-success" type="button">Open Profitable Screen →</button>
       </div>
     </div>
+
+    <!-- Top Pets Table on Home Screen -->
+    <section style="margin-top:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div>
+          <h3 style="font-size:18px; font-weight:900;">🔥 Top Trending Pets & Live Craft Margins</h3>
+          <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Real-time buy prices, 4-unit craft costs, neon sale values, and profit margins</div>
+        </div>
+        <button class="btn btn-sm btn-primary" type="button" onclick="switchScreen('catalog')">View All 210+ Pets →</button>
+      </div>
+      <div id="homePetsContainer"></div>
+    </section>
   </div>
 
   <!-- ================= SCREEN 2: IN-DEMAND PETS ================= -->
@@ -2333,6 +2348,12 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
 
   function render() {
     renderKPIs();
+
+    var hCont = el('homePetsContainer');
+    if (hCont) {
+      var topDemand = getFilteredRows('demand');
+      hCont.innerHTML = renderTable(topDemand.slice(0, 20));
+    }
     
     if (state.activeScreen === 'demand') {
       var dRows = getFilteredRows('demand');

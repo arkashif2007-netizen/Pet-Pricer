@@ -60,6 +60,12 @@ async function run() {
   const oppObj = JSON.parse(resOpp.body);
   console.log(`  ✔ Returned ${oppObj.count} opportunities`);
 
+  // 4. Test /api/catalog
+  const resCat = await invoke('/api/catalog?rarity=rare,ultra_rare,legendary&fee=0.25&cap=3');
+  console.log(`[Test 4] GET /api/catalog -> status ${resCat.statusCode}`);
+  const catObj = JSON.parse(resCat.body);
+  console.log(`  ✔ Returned ${catObj.count} catalog items`);
+
   console.log('\nAll Vercel bundle tests passed! 🚀');
 }
 
