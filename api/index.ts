@@ -6,16 +6,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const log = (msg: string) => console.log(`[vercel] ${msg}`);
 
   try {
-    // Normalize Vercel internal rewrite paths to root
-    if (req.url) {
-      const u = req.url;
-      if (u === '/api' || u === '/api/' || u === '/api/index.ts' || u === '/api/index') {
-        req.url = '/';
-      } else if (u.startsWith('/api?') || u.startsWith('/api/?') || u.startsWith('/api/index.ts?') || u.startsWith('/api/index?')) {
-        const query = u.substring(u.indexOf('?'));
-        req.url = '/' + query;
-      }
+    // Vercel rewrites send the original requested path in x-matched-path header
+    const rawPath =
+      (req.headers['x-matched-path'] as string) ||
+      (req.headers['x-vercel-matched-path'] as string) ||
+      req.url ||
+      '/';
+
+    let path = rawPath;
+    if (path === '/api' || path === '/api/' || path === '/api/index.ts' || path === '/api/index') {
+      path = '/';
+    } else if (path.startsWith('/api?') || path.startsWith('/api/?')) {
+      path = '/' + path.substring(path.indexOf('?'));
     }
+    req.url = path;
 
     const service = getService();
     triggerBackgroundSyncIfNeeded(service, log);

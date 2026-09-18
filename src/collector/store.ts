@@ -178,7 +178,8 @@ export class Store {
   };
 
   constructor(path = ':memory:') {
-    if (DatabaseSyncClass) {
+    const isServerless = !!(process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (!isServerless && DatabaseSyncClass && path !== ':memory-force:') {
       try {
         this.db = new DatabaseSyncClass(path);
         try {
@@ -196,15 +197,25 @@ export class Store {
   }
 
   private loadSeed(): void {
-    const candidates = [
-      join(process.cwd(), 'data', 'seed.json'),
-      join(process.cwd(), 'seed.json'),
-      join(process.cwd(), 'public', 'seed.json'),
-    ];
-    for (const p of candidates) {
-      if (existsSync(p)) {
-        try {
-          const raw = JSON.parse(readFileSync(p, 'utf8'));
+    let raw: any = null;
+    try {
+      raw = require('../../data/seed.json');
+    } catch {
+      const candidates = [
+        join(process.cwd(), 'data', 'seed.json'),
+        join(process.cwd(), 'public', 'seed.json'),
+        join(process.cwd(), 'seed.json'),
+      ];
+      for (const p of candidates) {
+        if (existsSync(p)) {
+          try {
+            raw = JSON.parse(readFileSync(p, 'utf8'));
+            if (raw) break;
+          } catch {}
+        }
+      }
+    }
+    if (!raw) return;
           if (Array.isArray(raw.items)) {
             for (const r of raw.items) {
               this.itemsMap.set(Number(r.product_id), {
@@ -269,10 +280,6 @@ export class Store {
               durationMs: s.finished_at ? Number(s.finished_at) - Number(s.started_at) : null,
             }));
           }
-          break;
-        } catch {}
-      }
-    }
   }
 
   close(): void {
