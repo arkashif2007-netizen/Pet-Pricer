@@ -1,0 +1,30 @@
+{
+  "name": "starpets-margin-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time margin scanner for Adopt Me pet crafting on the Starpets market (read-only price intelligence).",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test \"test/unit/*.test.ts\" \"test/integration/*.test.ts\"",
+    "test:unit": "node --test \"test/unit/*.test.ts\"",
+    "test:live": "node --test \"test/live/*.test.ts\"",
+    "sweep": "node src/collector/cli.ts sweep",
+    "watch": "node src/collector/cli.ts watch",
+    "serve": "node src/server/cli.ts",
+    "mcp": "node src/mcp/cli.ts",
+    "smoke": "node scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

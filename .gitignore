@@ -1,0 +1,20 @@
+node_modules/
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+dist/
+.env
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.apk
+*.aab
+*.iml
+.DS_Store
+scratch_*.py
+screenshots/
