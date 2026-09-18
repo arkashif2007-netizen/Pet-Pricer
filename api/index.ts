@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { existsSync, copyFileSync, mkdirSync } from 'node:fs';
+import { existsSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../src/collector/store.ts';
 import { loadConfig } from '../src/config.ts';
@@ -70,9 +70,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     // Normalize Vercel internal rewrite paths to root
     if (req.url) {
       const u = req.url;
-      if (u === '/api/index.ts' || u === '/api/index') {
+      if (u === '/api' || u === '/api/' || u === '/api/index.ts' || u === '/api/index') {
         req.url = '/';
-      } else if (u.startsWith('/api/index.ts?') || u.startsWith('/api/index?')) {
+      } else if (u.startsWith('/api?') || u.startsWith('/api/?') || u.startsWith('/api/index.ts?') || u.startsWith('/api/index?')) {
         const query = u.substring(u.indexOf('?'));
         req.url = '/' + query;
       }

@@ -4,12 +4,12 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api"
     }
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "assets/**,data/**,public/**",
+      "includeFiles": "data/**",
       "maxDuration": 15
     }
   }

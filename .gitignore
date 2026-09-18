@@ -1,6 +1,7 @@
 node_modules/
 data/*
 !data/starpets.sqlite
+!data/seed.json
 *.sqlite
 !data/starpets.sqlite
 *.sqlite-wal
