@@ -1,4 +1,14 @@
-# Adopt Me margin scanner
+---
+title: Pet Pricer
+emoji: 🐾
+colorFrom: blue
+colorTo: yellow
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# Pet Pricer — StarPets Intelligence
 
 Finds pets where **buying four normal pets and fusing them into one neon** is
 actually profitable, across the whole Adopt Me catalog, and exposes the result

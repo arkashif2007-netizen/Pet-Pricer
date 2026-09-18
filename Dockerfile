@@ -15,11 +15,10 @@ RUN npm run build
 # Default environment configuration
 ENV NODE_ENV=production
 ENV STARPETS_HOST=0.0.0.0
-ENV PORT=10000
+ENV PORT=7860
 ENV AUTO_START_WATCH=true
-ENV STARPETS_DB=/var/data/starpets.sqlite
+ENV STARPETS_DB=./data/starpets.sqlite
 
-VOLUME ["/var/data"]
-EXPOSE 10000 8787
+EXPOSE 7860 8787 10000
 
 CMD ["npm", "run", "serve"]
