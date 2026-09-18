@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
  */
 private const val REFRESH_INTERVAL_MS = 4 * 60 * 1000L
 
-const val DEFAULT_BASE_URL = "http://10.0.2.2:8787"
+const val DEFAULT_BASE_URL = "http://192.168.18.3:8787"
 
 data class ScannerUiState(
     val loading: Boolean = false,

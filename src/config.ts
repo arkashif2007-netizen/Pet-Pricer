@@ -73,7 +73,7 @@ export function loadConfig(): AppConfig {
     minReturnOnCapital: num('STARPETS_MIN_ROC', DEFAULT_MARGIN_CONFIG.minReturnOnCapital),
 
     dbPath: str('STARPETS_DB', './data/starpets.sqlite'),
-    host: str('STARPETS_HOST', process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1')),
+    host: str('STARPETS_HOST', process.env.HOST || '0.0.0.0'),
     port: num('STARPETS_PORT', num('PORT', 8787)),
     intervalMs: num('STARPETS_INTERVAL_MS', 5 * 60_000),
     historyRetentionMs: num('STARPETS_HISTORY_RETENTION_MS', 14 * 24 * 60 * 60_000),
