@@ -2,7 +2,7 @@ services:
   - type: web
     name: pet-pricer
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: npm install && npm run build
     startCommand: npm run serve
@@ -19,12 +19,8 @@ services:
       - key: AUTO_START_WATCH
         value: "true"
       - key: STARPETS_DB
-        value: /var/data/starpets.sqlite
+        value: ./data/starpets.sqlite
       - key: STARPETS_REQUEST_BUDGET
         value: "35"
       - key: STARPETS_INTERVAL_MS
         value: "300000"
-    disk:
-      name: starpets-db
-      mountPath: /var/data
-      sizeGB: 1
