@@ -1,6 +1,8 @@
 node_modules/
-data/
+data/*
+!data/starpets.sqlite
 *.sqlite
+!data/starpets.sqlite
 *.sqlite-wal
 *.sqlite-shm
 dist/
