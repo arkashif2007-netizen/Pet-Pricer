@@ -3787,13 +3787,14 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
   </div>
 </div>
 <script>
-  setTimeout(function() {
+  window.dismissSplashIntro = function() {
     var s = document.getElementById('introSplash');
-    if (s && !s.classList.contains('hidden')) {
+    if (s) {
       s.classList.add('hidden');
-      setTimeout(function() { s.style.display = 'none'; }, 500);
+      setTimeout(function() { s.style.display = 'none'; }, 400);
     }
-  }, 2600);
+  };
+  setTimeout(window.dismissSplashIntro, 1800);
 </script>
 
 <header class="header">
@@ -4386,7 +4387,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
         var pct = totalVolume > 0 ? ((s.value / totalVolume) * 100).toFixed(1) : '0';
         var barPct = totalVolume > 0 ? Math.min(100, Math.round((s.value / totalVolume) * 100 * 2.2)) : 0;
         var rareTag = s.rare ? '<span class="tag" style="font-size:9px; padding:1px 5px;">' + esc(formatRarity(s.rare)) + '</span>' : '';
-        legendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByPetName('' + esc(s.slug) + '')">' +
+        legendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByPetName(\\'' + esc(s.slug) + '\\')">' +
           '<div class="legend-row-top">' +
             '<div class="legend-left">' +
               (s.imageUri ? '<img class="legend-avatar" src="' + esc(s.imageUri) + '" alt="" />' : '<span class="legend-dot" style="background:' + s.color + '"></span>') +
@@ -4438,7 +4439,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
       raritySlices.forEach(function(s) {
         var pct = totalRarityVol > 0 ? ((s.value / totalRarityVol) * 100).toFixed(1) : '0';
         var barPct = totalRarityVol > 0 ? Math.min(100, Math.round((s.value / totalRarityVol) * 100)) : 0;
-        rarityLegendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByRarity('' + esc(s.name) + '')">' +
+        rarityLegendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByRarity(\\'' + esc(s.name) + '\\')">' +
           '<div class="legend-row-top">' +
             '<div class="legend-left">' +
               '<span class="legend-dot" style="background:' + s.color + '"></span>' +
