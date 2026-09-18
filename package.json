@@ -16,6 +16,7 @@
     "sweep": "node src/collector/cli.ts sweep",
     "watch": "node src/collector/cli.ts watch",
     "serve": "node src/server/cli.ts",
+    "start": "node src/server/cli.ts",
     "mcp": "node src/mcp/cli.ts",
     "smoke": "node scripts/smoke.ts"
   },
