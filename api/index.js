@@ -4212,9 +4212,22 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     el('toastAlert').classList.remove('show');
   });
 
+  var API_ORIGIN = (typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.origin === 'null' || !window.location.origin))
+    ? 'https://pet-pricer.vercel.app'
+    : '';
+
   function triggerPushNotification(petName, currentPrice, targetPrice, slug, normalId) {
     playAlertChime();
     showInAppToast(petName, currentPrice, targetPrice, slug, normalId);
+    if (window.AndroidBridge && window.AndroidBridge.postNotification) {
+      try {
+        window.AndroidBridge.postNotification(
+          '\u{1F6A8} Price Alert: ' + petName,
+          petName + ' buyable 4-price is now $' + pad(currentPrice, 2) + ' (<= Target $' + pad(targetPrice, 2) + ')!',
+          slug || ''
+        );
+      } catch (e) {}
+    }
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('\u{1F6A8} Price Alert: ' + petName, {
         body: petName + ' buyable 4-price is now $' + currentPrice.toFixed(2) + ' (<= Target $' + targetPrice.toFixed(2) + ')! Available on StarPets.',
@@ -4225,7 +4238,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
 
   // Live 5-Minute Countdown Timer & Server Poller
   function syncWithServerTimer() {
-    fetch('/api/sync-status')
+    fetch(API_ORIGIN + '/api/sync-status')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (typeof data.secondsRemaining === 'number') {
@@ -4255,7 +4268,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
 
   function fetchData(silent) {
     var rarities = state.rarity === 'all' ? 'rare,ultra_rare,legendary' : state.rarity;
-    var url = '/api/catalog?rarity=' + encodeURIComponent(rarities) + '&fee=' + state.feePct + '&cap=' + state.cap;
+    var url = API_ORIGIN + '/api/catalog?rarity=' + encodeURIComponent(rarities) + '&fee=' + state.feePct + '&cap=' + state.cap;
     fetch(url)
       .then(function(res) { return res.json(); })
       .then(function(data) {
@@ -4264,6 +4277,19 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
         evaluateAlerts();
         render3DCharts();
         render();
+        if (window.AndroidBridge && window.AndroidBridge.onOpportunitiesEvaluated) {
+          try {
+            var profitable = (state.catalog || []).filter(function(p) { return (p.margin || 0) > 0; });
+            if (profitable.length > 0) {
+              window.AndroidBridge.onOpportunitiesEvaluated(
+                profitable.length,
+                profitable[0].name,
+                Number(profitable[0].margin || 0),
+                profitable[0].slug || ''
+              );
+            }
+          } catch (e) {}
+        }
       })
       .catch(function(err) {
         if (!silent) {
@@ -4871,7 +4897,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     title.textContent = 'Inspecting Pet';
     body.innerHTML = '<div style="padding:20px;text-align:center;font-weight:800;">Loading live order book offers...</div>';
 
-    fetch('/api/pets/' + encodeURIComponent(slug))
+    fetch(API_ORIGIN + '/api/pets/' + encodeURIComponent(slug))
       .then(function(res) { return res.json(); })
       .then(function(detail) {
         var s = detail.summary;
@@ -4938,6 +4964,8 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     el('drawerOverlay').classList.remove('open');
     el('drawer').classList.remove('open');
   }
+  window.closeDrawer = closeDrawer;
+  window.state = state;
 
   el('drawerOverlay').addEventListener('click', closeDrawer);
   el('drawerClose').addEventListener('click', closeDrawer);
@@ -4950,7 +4978,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     var btn = el('syncPopularBtn');
     btn.disabled = true;
     btn.textContent = '\u23F3 Syncing...';
-    fetch('/api/sync-popular', { method: 'POST' })
+    fetch(API_ORIGIN + '/api/sync-popular', { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function() {
         btn.textContent = '\u2713 Synced!';
@@ -5003,6 +5031,10 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     state.cap = Number(e.target.value);
     fetchData(false);
   });
+
+  if (window.AndroidBridge && el('apkDownloadBtn')) {
+    el('apkDownloadBtn').style.display = 'none';
+  }
 
   // Initial Load
   fetchData(false);
