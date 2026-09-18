@@ -18,17 +18,42 @@
  *     displays 'Out of Stock on StarPets' when no player has listed a neon, rather than mystery dashes.
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+let cachedLogoDataUri = '';
+function getLogoDataUri(): string {
+  if (cachedLogoDataUri) return cachedLogoDataUri;
+  const candidates = [
+    join(process.cwd(), 'assets', 'logo.jpg'),
+    join(process.cwd(), 'public', 'logo.jpg'),
+    join(process.cwd(), 'android', 'app', 'src', 'main', 'res', 'drawable', 'app_logo.png'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        const mime = p.endsWith('.png') ? 'image/png' : 'image/jpeg';
+        cachedLogoDataUri = `data:${mime};base64,` + readFileSync(p).toString('base64');
+        return cachedLogoDataUri;
+      }
+    } catch {}
+  }
+  return '/logo.jpg';
+}
+
 export interface DashboardOptions {
   demoRowLabel?: string;
 }
 
 export function dashboardHtml(options: DashboardOptions = {}): string {
+  const logoSrc = getLogoDataUri();
   return `<!doctype html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Pet Pricer — StarPets Valuation & Craft Arbitrage Scanner</title>
+<link rel="icon" href="${logoSrc}" />
 <style>
 :root {
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -1256,7 +1281,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     <div class="intro-logo-3d-wrapper">
       <div class="intro-glow-pedestal"></div>
       <div class="intro-logo-3d-card" id="introLogoCard">
-        <img src="/logo.jpg" alt="Pet Pricer" class="intro-logo-img" />
+        <img src="${logoSrc}" alt="Pet Pricer" class="intro-logo-img" />
         <div class="intro-logo-sheen"></div>
       </div>
     </div>
@@ -1287,7 +1312,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
   <div class="container header-wrap">
     <div class="brand-group" onclick="replaySplashIntro()" title="Click to replay Pet Pricer 3D intro">
       <div class="brand-logo-wrap">
-        <img class="brand-logo-img" src="/logo.jpg" alt="Pet Pricer Logo" />
+        <img class="brand-logo-img" src="${logoSrc}" alt="Pet Pricer Logo" />
         <span class="brand-badge-dot" title="System Connected"></span>
       </div>
       <div>
@@ -1351,45 +1376,25 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
       </div>
     </section>
 
-    <!-- Straight High-Contrast Donut & Pie Charts Section -->
+    <!-- Market Demand Volume & Rarity Bar Charts (Pie Charts Removed) -->
     <section class="pie-section">
       <div class="pie-header">
         <div>
-          <div class="pie-title">📊 Market Demand Intelligence & Popularity Share</div>
-          <div class="pie-sub">Straight-on, high-contrast volume distribution across highest-velocity Adopt Me pets on StarPets</div>
+          <div class="pie-title">📊 Market Demand Intelligence & Volume Breakdown</div>
+          <div class="pie-sub">Weekly trading volume distribution and rarity share across Adopt Me pets on StarPets</div>
         </div>
         <div class="tag tag-hot" id="totalMarketVolumeBadge">Loading Volume...</div>
       </div>
       <div class="pie-grid">
-        <!-- Straight Donut Chart 1: Top Demanding Pets -->
-        <div class="pie-card">
-          <div class="pie-card-title">Top Traded Pets (Weekly Volume Share)</div>
-          <div class="donut-straight-stage">
-            <div class="donut-straight-scene">
-              <svg id="topPetsDonutSvg" viewBox="0 0 240 240" class="donut-svg"></svg>
-              <div class="donut-center-pedestal">
-                <img id="pedestalTopAvatar" class="pedestal-avatar" src="" style="display:none;" alt="" />
-                <div class="pedestal-val" id="pedestalTopVal">--</div>
-                <div class="pedestal-lbl" id="pedestalTopLbl">Top Demand</div>
-              </div>
-            </div>
-          </div>
-          <div class="pie-legend" id="topPetsLegend"></div>
+        <!-- Bar Chart Card 1: Top Demanding Pets -->
+        <div class="pie-card" style="align-items: stretch;">
+          <div class="pie-card-title">🔥 Top Traded Pets (Weekly Volume Share)</div>
+          <div class="pie-legend" id="topPetsLegend" style="width: 100%;"></div>
         </div>
-        <!-- Straight Donut Chart 2: Rarity Demand Distribution -->
-        <div class="pie-card">
-          <div class="pie-card-title">Demand Share by Rarity Tier</div>
-          <div class="donut-straight-stage">
-            <div class="donut-straight-scene">
-              <svg id="rarityPieSvg" viewBox="0 0 240 240" class="donut-svg"></svg>
-              <div class="donut-center-pedestal">
-                <div style="font-size:18px;">🏆</div>
-                <div class="pedestal-val" id="pedestalRarityVal">--</div>
-                <div class="pedestal-lbl" id="pedestalRarityLbl">Top Tier</div>
-              </div>
-            </div>
-          </div>
-          <div class="pie-legend" id="rarityLegend"></div>
+        <!-- Bar Chart Card 2: Rarity Demand Distribution -->
+        <div class="pie-card" style="align-items: stretch;">
+          <div class="pie-card-title">⭐ Demand Share by Rarity Tier</div>
+          <div class="pie-legend" id="rarityLegend" style="width: 100%;"></div>
         </div>
       </div>
     </section>
@@ -1818,9 +1823,9 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
   // Auto-launch 3D splash intro on app start
   startSplashAnimation();
 
-  /* ---------- STRAIGHT, HIGH-CONTRAST DONUT & PIE CHARTS ---------- */
+  /* ---------- MARKET DEMAND VOLUME & RARITY BAR CHARTS (PIE CHARTS REMOVED) ---------- */
   function render3DCharts() {
-    if (!state.catalog.length) return;
+    if (!state.catalog || !state.catalog.length) return;
 
     var slicePalette = [
       { color: '#d97706', brightColor: '#fbbf24', darkColor: '#b45309' }, // Golden Caramel
@@ -1839,7 +1844,7 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     var totalVolume = 0;
     validPets.forEach(function(p) { totalVolume += p.salesPerWeek; });
 
-    var mainTop = validPets.slice(0, 5);
+    var mainTop = validPets.slice(0, 6);
     var mainSum = 0;
     mainTop.forEach(function(p, i) {
       mainSum += p.salesPerWeek;
@@ -1851,8 +1856,6 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
         rare: p.rare,
         value: p.salesPerWeek,
         color: pal.color,
-        brightColor: pal.brightColor,
-        darkColor: pal.darkColor
       });
     });
 
@@ -1864,55 +1867,35 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
         rare: '',
         value: totalVolume - mainSum,
         color: '#78716c',
-        brightColor: '#a8a29e',
-        darkColor: '#57534e'
       });
     }
 
-    el('totalMarketVolumeBadge').textContent = '🔥 Total Weekly Trades: ' + totalVolume.toLocaleString() + ' pets/wk';
-    if (topSlices.length > 0) {
-      var topPet = topSlices[0];
-      var pct = ((topPet.value / totalVolume) * 100).toFixed(0) + '%';
-      el('pedestalTopVal').textContent = pct;
-      el('pedestalTopLbl').textContent = topPet.name.split(' ')[0];
-      if (topPet.imageUri) {
-        var av = el('pedestalTopAvatar');
-        av.src = topPet.imageUri;
-        av.style.display = 'block';
-      }
+    var badge = el('totalMarketVolumeBadge');
+    if (badge) {
+      badge.textContent = '🔥 Total Weekly Trades: ' + totalVolume.toLocaleString() + ' pets/wk';
     }
 
-    drawStraightDonut('topPetsDonutSvg', topSlices, totalVolume, 120, 120, 94, 58, function(item) {
-      var pct = ((item.value / totalVolume) * 100).toFixed(1) + '%';
-      el('pedestalTopVal').textContent = pct;
-      el('pedestalTopLbl').textContent = item.name.split(' ')[0];
-      var av = el('pedestalTopAvatar');
-      if (item.imageUri) {
-        av.src = item.imageUri;
-        av.style.display = 'block';
-      } else {
-        av.style.display = 'none';
-      }
-    });
-
-    // Top Pets Legend with Real Avatars and Share Progress Bars
-    var legendHtml = '';
-    topSlices.forEach(function(s, idx) {
-      var pct = totalVolume > 0 ? ((s.value / totalVolume) * 100).toFixed(1) : '0';
-      var barPct = Math.min(100, Math.round((s.value / totalVolume) * 100 * 2.2));
-      var rareTag = s.rare ? '<span class="tag" style="font-size:9px; padding:1px 5px;">' + esc(formatRarity(s.rare)) + '</span>' : '';
-      legendHtml += '<div class="legend-item" onmouseenter="highlightSlice(\\'topPetsDonutSvg\\', ' + idx + ')" onclick="filterByPetName(\\'' + esc(s.slug) + '\\')">' +
-        '<div class="legend-row-top">' +
-          '<div class="legend-left">' +
-            (s.imageUri ? '<img class="legend-avatar" src="' + esc(s.imageUri) + '" alt="" />' : '<span class="legend-dot" style="background:' + s.color + '"></span>') +
-            '<span class="legend-name">' + esc(s.name) + '</span> ' + rareTag +
+    // Top Pets Legend Bar Chart with Real Avatars and Share Progress Bars
+    var legendEl = el('topPetsLegend');
+    if (legendEl) {
+      var legendHtml = '';
+      topSlices.forEach(function(s) {
+        var pct = totalVolume > 0 ? ((s.value / totalVolume) * 100).toFixed(1) : '0';
+        var barPct = totalVolume > 0 ? Math.min(100, Math.round((s.value / totalVolume) * 100 * 2.2)) : 0;
+        var rareTag = s.rare ? '<span class="tag" style="font-size:9px; padding:1px 5px;">' + esc(formatRarity(s.rare)) + '</span>' : '';
+        legendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByPetName(\'' + esc(s.slug) + '\')">' +
+          '<div class="legend-row-top">' +
+            '<div class="legend-left">' +
+              (s.imageUri ? '<img class="legend-avatar" src="' + esc(s.imageUri) + '" alt="" />' : '<span class="legend-dot" style="background:' + s.color + '"></span>') +
+              '<span class="legend-name">' + esc(s.name) + '</span> ' + rareTag +
+            '</div>' +
+            '<div class="legend-right"><b>' + s.value.toLocaleString() + '</b> <span style="opacity:0.75;">(' + pct + '%)</span></div>' +
           '</div>' +
-          '<div class="legend-right">' + s.value.toLocaleString() + ' (' + pct + '%)</div>' +
-        '</div>' +
-        '<div class="legend-bar-track"><div class="legend-bar-fill" style="width:' + barPct + '%; background:' + s.color + ';"></div></div>' +
-      '</div>';
-    });
-    el('topPetsLegend').innerHTML = legendHtml;
+          '<div class="legend-bar-track"><div class="legend-bar-fill" style="width:' + barPct + '%; background:' + s.color + ';"></div></div>' +
+        '</div>';
+      });
+      legendEl.innerHTML = legendHtml;
+    }
 
     // 2. Rarity Demand Distribution
     var rarityCounts = { 'Legendary': 0, 'Ultra Rare': 0, 'Rare': 0, 'Uncommon': 0, 'Common': 0 };
@@ -1926,148 +1909,46 @@ tbody td { padding: 14px 16px; vertical-align: middle; }
     });
 
     var rarityPalette = {
-      'Legendary': { color: '#d97706', brightColor: '#f59e0b', darkColor: '#b45309' },
-      'Ultra Rare': { color: '#7c3aed', brightColor: '#a855f7', darkColor: '#581c87' },
-      'Rare': { color: '#0284c7', brightColor: '#38bdf8', darkColor: '#075985' },
-      'Uncommon': { color: '#059669', brightColor: '#34d399', darkColor: '#064e3b' },
-      'Common': { color: '#64748b', brightColor: '#94a3b8', darkColor: '#334155' }
+      'Legendary': { color: '#d97706' },
+      'Ultra Rare': { color: '#7c3aed' },
+      'Rare': { color: '#0284c7' },
+      'Uncommon': { color: '#059669' },
+      'Common': { color: '#64748b' }
     };
 
     var raritySlices = [];
     Object.keys(rarityCounts).forEach(function(k) {
       if (rarityCounts[k] > 0) {
-        var pal = rarityPalette[k] || { color: '#8c5328', brightColor: '#b87333', darkColor: '#522e14' };
+        var pal = rarityPalette[k] || { color: '#8c5328' };
         raritySlices.push({
           name: k,
           value: rarityCounts[k],
           color: pal.color,
-          brightColor: pal.brightColor,
-          darkColor: pal.darkColor
         });
       }
     });
     raritySlices.sort(function(a, b) { return b.value - a.value; });
 
-    if (raritySlices.length > 0) {
-      var topRarity = raritySlices[0];
-      var rPct = ((topRarity.value / totalRarityVol) * 100).toFixed(0) + '%';
-      el('pedestalRarityVal').textContent = rPct;
-      el('pedestalRarityLbl').textContent = topRarity.name;
-    }
-
-    drawStraightDonut('rarityPieSvg', raritySlices, totalRarityVol, 120, 120, 94, 58, function(item) {
-      var pct = ((item.value / totalRarityVol) * 100).toFixed(1) + '%';
-      el('pedestalRarityVal').textContent = pct;
-      el('pedestalRarityLbl').textContent = item.name;
-    });
-
-    var rarityLegendHtml = '';
-    raritySlices.forEach(function(s, idx) {
-      var pct = totalRarityVol > 0 ? ((s.value / totalRarityVol) * 100).toFixed(1) : '0';
-      var barPct = Math.min(100, Math.round((s.value / totalRarityVol) * 100));
-      rarityLegendHtml += '<div class="legend-item" onmouseenter="highlightSlice(\\'rarityPieSvg\\', ' + idx + ')" onclick="filterByRarity(\\'' + esc(s.name) + '\\')">' +
-        '<div class="legend-row-top">' +
-          '<div class="legend-left">' +
-            '<span class="legend-dot" style="background:' + s.color + '"></span>' +
-            '<span class="legend-name">' + esc(s.name) + '</span>' +
+    var rarityEl = el('rarityLegend');
+    if (rarityEl) {
+      var rarityLegendHtml = '';
+      raritySlices.forEach(function(s) {
+        var pct = totalRarityVol > 0 ? ((s.value / totalRarityVol) * 100).toFixed(1) : '0';
+        var barPct = totalRarityVol > 0 ? Math.min(100, Math.round((s.value / totalRarityVol) * 100)) : 0;
+        rarityLegendHtml += '<div class="legend-item" style="cursor:pointer;" onclick="filterByRarity(\'' + esc(s.name) + '\')">' +
+          '<div class="legend-row-top">' +
+            '<div class="legend-left">' +
+              '<span class="legend-dot" style="background:' + s.color + '"></span>' +
+              '<span class="legend-name">' + esc(s.name) + '</span>' +
+            '</div>' +
+            '<div class="legend-right"><b>' + s.value.toLocaleString() + '</b> <span style="opacity:0.75;">(' + pct + '%)</span></div>' +
           '</div>' +
-          '<div class="legend-right">' + s.value.toLocaleString() + ' (' + pct + '%)</div>' +
-        '</div>' +
-        '<div class="legend-bar-track"><div class="legend-bar-fill" style="width:' + barPct + '%; background:' + s.color + ';"></div></div>' +
-      '</div>';
-    });
-    el('rarityLegend').innerHTML = rarityLegendHtml;
-  }
-
-  // Straight, Non-Skewed, Geometric Circular Donut Drawer
-  function drawStraightDonut(svgId, slices, total, cx, cy, rOut, rIn, onHover) {
-    var svg = el(svgId);
-    if (!svg || !slices.length || total <= 0) return;
-
-    // Start cleanly at top (12 o'clock, -90 degrees)
-    var currentAngle = -Math.PI / 2;
-    var radiusMid = (rOut + rIn) / 2;
-    var strokeWidth = rOut - rIn;
-
-    var defs = '<defs>' +
-      '<filter id="donutShadow' + svgId + '" x="-20%" y="-20%" width="140%" height="140%">' +
-        '<feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="rgba(43,24,16,0.18)" />' +
-      '</filter>';
-
-    slices.forEach(function(s, idx) {
-      defs += '<linearGradient id="grad' + svgId + idx + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
-        '<stop offset="0%" stop-color="' + (s.brightColor || s.color) + '" />' +
-        '<stop offset="100%" stop-color="' + (s.darkColor || s.color) + '" />' +
-      '</linearGradient>';
-    });
-    defs += '</defs>';
-
-    // Base background groove track
-    var trackPath = '<circle cx="' + cx + '" cy="' + cy + '" r="' + radiusMid + '" fill="none" stroke="rgba(217, 195, 175, 0.28)" stroke-width="' + (strokeWidth + 2) + '" />';
-
-    var paths = '';
-
-    slices.forEach(function(slice, idx) {
-      var sliceAngle = (slice.value / total) * 2 * Math.PI;
-      if (slices.length === 1 || sliceAngle >= 2 * Math.PI - 0.001) {
-        sliceAngle = 2 * Math.PI - 0.0001;
-      }
-      var startAngle = currentAngle;
-      var endAngle = currentAngle + sliceAngle;
-
-      var x1Out = cx + rOut * Math.cos(startAngle);
-      var y1Out = cy + rOut * Math.sin(startAngle);
-      var x2Out = cx + rOut * Math.cos(endAngle);
-      var y2Out = cy + rOut * Math.sin(endAngle);
-
-      var x1In = cx + rIn * Math.cos(startAngle);
-      var y1In = cy + rIn * Math.sin(startAngle);
-      var x2In = cx + rIn * Math.cos(endAngle);
-      var y2In = cy + rIn * Math.sin(endAngle);
-
-      var largeArc = sliceAngle > Math.PI ? 1 : 0;
-
-      // Perfectly straight circular ring arc segment
-      var d = 'M ' + x1Out.toFixed(2) + ' ' + y1Out.toFixed(2) +
-              ' A ' + rOut + ' ' + rOut + ' 0 ' + largeArc + ' 1 ' + x2Out.toFixed(2) + ' ' + y2Out.toFixed(2) +
-              ' L ' + x2In.toFixed(2) + ' ' + y2In.toFixed(2) +
-              ' A ' + rIn + ' ' + rIn + ' 0 ' + largeArc + ' 0 ' + x1In.toFixed(2) + ' ' + y1In.toFixed(2) +
-              ' Z';
-
-      paths += '<path class="donut-slice" id="slice_' + svgId + '_' + idx + '" d="' + d + '" ' +
-               'fill="url(#grad' + svgId + idx + ')" ' +
-               'stroke="var(--bg-card)" stroke-width="3" stroke-linejoin="round" ' +
-               'data-idx="' + idx + '" data-svg="' + svgId + '">' +
-               '<title>' + esc(slice.name) + ': ' + slice.value.toLocaleString() + ' trades (' + ((slice.value / total) * 100).toFixed(1) + '%)</title>' +
-               '</path>';
-
-      currentAngle = endAngle;
-    });
-
-    svg.innerHTML = defs + trackPath + '<g filter="url(#donutShadow' + svgId + ')">' + paths + '</g>';
-
-    var sliceEls = svg.querySelectorAll('.donut-slice');
-    sliceEls.forEach(function(p) {
-      p.addEventListener('mouseenter', function() {
-        var idx = Number(p.getAttribute('data-idx'));
-        if (slices[idx] && onHover) onHover(slices[idx]);
+          '<div class="legend-bar-track"><div class="legend-bar-fill" style="width:' + barPct + '%; background:' + s.color + ';"></div></div>' +
+        '</div>';
       });
-      p.addEventListener('click', function() {
-        var idx = Number(p.getAttribute('data-idx'));
-        if (slices[idx]) {
-          if (slices[idx].slug) window.filterByPetName(slices[idx].slug);
-          else if (slices[idx].name) window.filterByRarity(slices[idx].name);
-        }
-      });
-    });
-  }
-
-  window.highlightSlice = function(svgId, idx) {
-    var slice = el('slice_' + svgId + '_' + idx);
-    if (slice) {
-      slice.dispatchEvent(new MouseEvent('mouseenter'));
+      rarityEl.innerHTML = rarityLegendHtml;
     }
-  };
+  }
 
   window.filterByPetName = function(slug) {
     if (!slug) return;

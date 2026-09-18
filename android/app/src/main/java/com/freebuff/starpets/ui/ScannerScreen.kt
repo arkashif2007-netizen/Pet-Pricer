@@ -1,6 +1,11 @@
 package com.freebuff.starpets.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.freebuff.starpets.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,10 +102,55 @@ fun ScannerScreen(
     onBack: () -> Unit,
     onDepth: (Long, Int) -> Unit,
 ) {
+    var initialSplashDone by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1200)
+        initialSplashDone = true
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.selected?.summary?.petName ?: "Margin Scanner") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "Pet Pricer Logo",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        if (state.selected != null) {
+                            Column {
+                                Text(
+                                    state.selected.summary.petName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    "StarPets Intelligence",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Column {
+                                Text(
+                                    "Pet Pricer",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                                Text(
+                                    "StarPets Intelligence",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                },
                 navigationIcon = {
                     if (state.selected != null) {
                         IconButton(onClick = onBack) {
@@ -119,7 +170,7 @@ fun ScannerScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (state.loading && state.opportunities.isEmpty()) {
+            if (!initialSplashDone || (state.loading && state.opportunities.isEmpty())) {
                 LoadingPane()
                 return@Column
             }
@@ -161,7 +212,43 @@ fun ScannerScreen(
 @Composable
 private fun LoadingPane() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Pet Pricer Logo",
+                modifier = Modifier
+                    .size(130.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(Modifier.height(18.dp))
+            Text(
+                "Pet Pricer",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Adopt Me • StarPets Real-Time Scanner",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(28.dp))
+            CircularProgressIndicator(
+                modifier = Modifier.size(36.dp),
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Connecting to market feed...",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
